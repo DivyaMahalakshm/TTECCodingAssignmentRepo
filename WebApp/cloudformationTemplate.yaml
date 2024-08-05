@@ -1,0 +1,59 @@
+#c.custom resource for CloudFormation] that will allow you to publish the contact flow to a Connect instance with the appropriate Lambda ARN already in the contact flow so that there is no manual configuration of the flow.
+#d.Build a deployment package with AWS SAM, AWS CDK, or CloudFormation to allow a user, or assignment reviewer, to deploy your Lambda, custom resource.
+
+#Custom Resource to publish the contact flow
+Resources:
+  ContactFlowPublisher:
+    Type: Custom::ContactFlowPublisher
+    Properties:
+      ServiceToken: 'arn:aws:lambda:${Region}:${AccountId}:function:912462Function'
+      ConnectInstanceId: '${InstanceId}'
+      ContactFlowId: '${contactFlowId}'
+      LambdaArn: 'arn:aws:lambda:${Region}:${AccountId}:function:912462Function'
+  # Lambda Function to be deployed to use in connect
+  UpdateS3ConfigLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: 'ContactFlowLambdaTogetThreeVanityPossibilities'
+      Environment:
+        Variables:
+          storeVanityNumbersTable: 'StoreVanityNumbers'
+      Handler: index.handler
+      CodeUri:
+        Bucket: 'BucketName'
+        Key: "LambdaFunctions/build.zip"
+      Runtime: nodejs14.x
+      MemorySize: 512
+      Timeout: 60
+      Role: !Ref IAMRole
+      AutoPublishAlias: !Ref Alias
+  # IAM role for the above lambda
+  IAMRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - dynamodb.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: ['GetItem', 'PutItem']
+                Resource: '*'
+  RootInstanceProfile:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      Path: /
+      Roles:
+        - !Ref IAMRole
+
+
